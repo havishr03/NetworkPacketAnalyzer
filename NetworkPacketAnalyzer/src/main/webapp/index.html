@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Packet Analyzer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: rgba(30, 41, 59, 0.7);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--bg-color), #020617);
+            color: var(--text-main);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        h1 {
+            font-weight: 600;
+            margin-bottom: 2rem;
+            background: -webkit-linear-gradient(#60a5fa, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            display: grid;
+            gap: 2rem;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease;
+        }
+
+        .panel:hover {
+            transform: translateY(-2px);
+        }
+
+        h2 {
+            margin-top: 0;
+            font-size: 1.25rem;
+            color: var(--text-main);
+        }
+
+        .form-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(15, 23, 42, 0.8);
+            color: var(--text-main);
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent);
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            background: var(--accent);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        button:hover {
+            background: var(--accent-hover);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .status {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        .status.error { color: var(--danger); display: block; }
+        .status.success { color: var(--success); display: block; }
+
+        /* Table Styles */
+        .table-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        select {
+            padding: 0.5rem;
+            border-radius: 6px;
+            background: rgba(15, 23, 42, 0.8);
+            color: var(--text-main);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            outline: none;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        th {
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+        }
+
+        tr {
+            transition: background 0.2s;
+        }
+
+        tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Network Packet Analyzer</h1>
+
+    <div class="container">
+        
+        <!-- Input Panel -->
+        <div class="panel">
+            <h2>Analyze New Packet Log</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: -0.5rem;">
+                Format: <code style="color: #cbd5e1;">PACKET: &lt;TYPE&gt; &lt;Description&gt;</code> (e.g., PACKET: TCP connection from 192.168.1.1)
+            </p>
+            <div class="form-group">
+                <input type="text" id="logInput" placeholder="Enter log line here...">
+                <button onclick="submitLog()">Analyze</button>
+            </div>
+            <div id="submitStatus" class="status"></div>
+        </div>
+
+        <!-- Display Panel -->
+        <div class="panel">
+            <div class="table-controls">
+                <h2>Captured Packets</h2>
+                <div>
+                    <label for="typeFilter" style="font-size: 0.9rem; color: var(--text-muted);">Filter by Type: </label>
+                    <select id="typeFilter" onchange="fetchPackets()">
+                        <option value="">All Types</option>
+                        <option value="TCP" selected>TCP Only</option>
+                        <option value="UDP">UDP</option>
+                        <option value="ICMP">ICMP</option>
+                    </select>
+                </div>
+            </div>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Packet ID</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody id="packetTableBody">
+                    <tr>
+                        <td colspan="3" style="text-align: center; color: var(--text-muted);">Loading packets...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <script>
+        // Initial fetch on load
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchPackets();
+        });
+
+        async function submitLog() {
+            const input = document.getElementById('logInput');
+            const status = document.getElementById('submitStatus');
+            const logLine = input.value;
+
+            if(!logLine) return;
+
+            try {
+                // We use URLSearchParams to send x-www-form-urlencoded data which Servlet getParameter expects
+                const params = new URLSearchParams();
+                params.append('logLine', logLine);
+
+                const response = await fetch('/api/packets', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: params
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    status.className = 'status success';
+                    status.textContent = 'Packet analyzed and stored successfully!';
+                    input.value = '';
+                    fetchPackets(); // Refresh table
+                } else {
+                    status.className = 'status error';
+                    status.textContent = data.error || 'Failed to parse log.';
+                }
+            } catch (error) {
+                status.className = 'status error';
+                status.textContent = 'Network error occurred.';
+            }
+
+            // Hide status message after 3 seconds
+            setTimeout(() => {
+                status.className = 'status';
+            }, 3000);
+        }
+
+        async function fetchPackets() {
+            const filter = document.getElementById('typeFilter').value;
+            const tbody = document.getElementById('packetTableBody');
+            
+            try {
+                const url = filter ? `/api/packets?type=${filter}` : '/api/packets';
+                const response = await fetch(url);
+                const packets = await response.json();
+
+                tbody.innerHTML = ''; // Clear table
+
+                if (packets.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted);">No packets found.</td></tr>';
+                    return;
+                }
+
+                packets.forEach(pkt => {
+                    const tr = document.createElement('tr');
+                    
+                    const tdId = document.createElement('td');
+                    tdId.textContent = pkt.packetId;
+                    tdId.style.fontFamily = 'monospace';
+                    tdId.style.color = 'var(--text-muted)';
+                    
+                    const tdType = document.createElement('td');
+                    const span = document.createElement('span');
+                    span.className = 'badge';
+                    span.textContent = pkt.packetType;
+                    tdType.appendChild(span);
+                    
+                    const tdDesc = document.createElement('td');
+                    tdDesc.textContent = pkt.description;
+                    
+                    tr.appendChild(tdId);
+                    tr.appendChild(tdType);
+                    tr.appendChild(tdDesc);
+                    
+                    tbody.appendChild(tr);
+                });
+            } catch (error) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--danger);">Failed to load packets. Ensure Database is running.</td></tr>';
+            }
+        }
+    </script>
+</body>
+</html>
