@@ -139,6 +139,37 @@ public class PacketServlet extends HttpServlet {
         }
     }
 
+    /**
+     * DELETE /api/packets?id=...
+     * Deletes a packet from the database.
+     */
+    @Override
+    protected void doDelete(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String packetId = request.getParameter("id");
+        if (packetId == null || packetId.trim().isEmpty()) {
+            sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Packet ID parameter is missing or empty.");
+            return;
+        }
+
+        try (Connection conn = DatabaseUtil.getConnection()) {
+            String sql = "DELETE FROM packets WHERE packet_id = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, packetId);
+                int rowsAffected = stmt.executeUpdate();
+                
+                if (rowsAffected > 0) {
+                    response.setStatus(HttpServletResponse.SC_OK);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"status\":\"success\", \"message\":\"Packet deleted successfully.\"}");
+                } else {
+                    sendError(response, HttpServletResponse.SC_NOT_FOUND, "Packet not found.");
+                }
+            }
+        } catch (SQLException e) {
+            sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error while deleting packet: " + e.getMessage());
+        }
+    }
+
     private void savePacketToDatabase(NetworkPacket packet) throws SQLException {
         try (Connection conn = DatabaseUtil.getConnection()) {
             String sql = "INSERT INTO packets (packet_id, packet_type, description) VALUES (?, ?, ?)";
