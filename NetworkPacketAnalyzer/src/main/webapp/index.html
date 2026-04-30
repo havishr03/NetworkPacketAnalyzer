@@ -208,11 +208,12 @@
                         <th>Packet ID</th>
                         <th>Type</th>
                         <th>Description</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="packetTableBody">
                     <tr>
-                        <td colspan="3" style="text-align: center; color: var(--text-muted);">Loading packets...</td>
+                        <td colspan="4" style="text-align: center; color: var(--text-muted);">Loading packets...</td>
                     </tr>
                 </tbody>
             </table>
@@ -280,7 +281,7 @@
                 tbody.innerHTML = ''; // Clear table
 
                 if (packets.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted);">No packets found.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">No packets found.</td></tr>';
                     return;
                 }
 
@@ -301,14 +302,43 @@
                     const tdDesc = document.createElement('td');
                     tdDesc.textContent = pkt.description;
                     
+                    const tdActions = document.createElement('td');
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = 'Delete';
+                    deleteBtn.style.padding = '0.3rem 0.6rem';
+                    deleteBtn.style.background = 'var(--danger)';
+                    deleteBtn.style.fontSize = '0.8rem';
+                    deleteBtn.onclick = () => deletePacket(pkt.packetId);
+                    tdActions.appendChild(deleteBtn);
+                    
                     tr.appendChild(tdId);
                     tr.appendChild(tdType);
                     tr.appendChild(tdDesc);
+                    tr.appendChild(tdActions);
                     
                     tbody.appendChild(tr);
                 });
             } catch (error) {
-                tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--danger);">Failed to load packets. Ensure Database is running.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--danger);">Failed to load packets. Ensure Database is running.</td></tr>';
+            }
+        }
+
+        async function deletePacket(packetId) {
+            if (!confirm(`Are you sure you want to delete packet ${packetId}?`)) return;
+
+            try {
+                const response = await fetch(`/api/packets?id=${encodeURIComponent(packetId)}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    fetchPackets(); // Refresh table
+                } else {
+                    const data = await response.json();
+                    alert(data.error || 'Failed to delete packet.');
+                }
+            } catch (error) {
+                alert('Network error occurred while deleting.');
             }
         }
     </script>
