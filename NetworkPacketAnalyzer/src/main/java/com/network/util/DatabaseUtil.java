@@ -39,6 +39,11 @@ public class DatabaseUtil {
                          "description TEXT" +
                          ")";
             stmt.execute(sql);
+            
+            // Add timestamp column if it doesn't exist
+            String addColSql = "ALTER TABLE packets ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP";
+            stmt.execute(addColSql);
+            
             System.out.println("Database initialized successfully.");
         } catch (SQLException e) {
             System.err.println("Error initializing database (check if PostgreSQL is running): " + e.getMessage());
