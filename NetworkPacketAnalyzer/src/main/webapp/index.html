@@ -166,6 +166,24 @@
             background: rgba(59, 130, 246, 0.2);
             color: #60a5fa;
         }
+
+        .stats-container {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .stat-box {
+            background: rgba(15, 23, 42, 0.8);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            flex: 1;
+            text-align: center;
+        }
+        .stat-box.tcp { border-bottom: 3px solid var(--accent); }
+        .stat-box.udp { border-bottom: 3px solid var(--success); }
+        .stat-box.icmp { border-bottom: 3px solid #f59e0b; }
+        .stat-value { font-size: 1.5rem; font-weight: 600; margin-top: 0.25rem; }
     </style>
 </head>
 <body>
@@ -187,18 +205,41 @@
             <div id="submitStatus" class="status"></div>
         </div>
 
+        <!-- Stats Panel -->
+        <div class="stats-container">
+            <div class="stat-box">
+                <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Total Packets</div>
+                <div class="stat-value" id="stat-total">0</div>
+            </div>
+            <div class="stat-box tcp">
+                <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">TCP</div>
+                <div class="stat-value" id="stat-tcp">0</div>
+            </div>
+            <div class="stat-box udp">
+                <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">UDP</div>
+                <div class="stat-value" id="stat-udp">0</div>
+            </div>
+            <div class="stat-box icmp">
+                <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">ICMP</div>
+                <div class="stat-value" id="stat-icmp">0</div>
+            </div>
+        </div>
+
         <!-- Display Panel -->
         <div class="panel">
             <div class="table-controls">
                 <h2>Captured Packets</h2>
                 <div>
+                    <input type="text" id="searchInput" placeholder="Search description..." onkeyup="filterTableLocally()" style="width: 200px; padding: 0.5rem; margin-right: 0.5rem; border-radius: 6px; background: rgba(15, 23, 42, 0.8); color: var(--text-main); border: 1px solid rgba(255, 255, 255, 0.2); outline: none;">
                     <label for="typeFilter" style="font-size: 0.9rem; color: var(--text-muted);">Filter by Type: </label>
-                    <select id="typeFilter" onchange="fetchPackets()">
+                    <select id="typeFilter" onchange="fetchPackets()" style="margin-right: 0.5rem;">
                         <option value="">All Types</option>
                         <option value="TCP" selected>TCP Only</option>
                         <option value="UDP">UDP</option>
                         <option value="ICMP">ICMP</option>
                     </select>
+                    <button onclick="exportCSV()" style="background: var(--success); padding: 0.5rem 1rem; font-size: 0.9rem; margin-right: 0.5rem;">Export CSV</button>
+                    <button onclick="clearAllPackets()" style="background: var(--danger); padding: 0.5rem 1rem; font-size: 0.9rem;">Clear All</button>
                 </div>
             </div>
             
@@ -206,6 +247,7 @@
                 <thead>
                     <tr>
                         <th>Packet ID</th>
+                        <th>Timestamp</th>
                         <th>Type</th>
                         <th>Description</th>
                         <th>Actions</th>
@@ -213,7 +255,7 @@
                 </thead>
                 <tbody id="packetTableBody">
                     <tr>
-                        <td colspan="4" style="text-align: center; color: var(--text-muted);">Loading packets...</td>
+                        <td colspan="5" style="text-align: center; color: var(--text-muted);">Loading packets...</td>
                     </tr>
                 </tbody>
             </table>
@@ -281,17 +323,30 @@
                 tbody.innerHTML = ''; // Clear table
 
                 if (packets.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">No packets found.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No packets found.</td></tr>';
                     return;
                 }
 
+                let total = 0, tcp = 0, udp = 0, icmp = 0;
+                window.currentPackets = packets;
+
                 packets.forEach(pkt => {
+                    total++;
+                    if (pkt.packetType === 'TCP') tcp++;
+                    if (pkt.packetType === 'UDP') udp++;
+                    if (pkt.packetType === 'ICMP') icmp++;
+
                     const tr = document.createElement('tr');
                     
                     const tdId = document.createElement('td');
                     tdId.textContent = pkt.packetId;
                     tdId.style.fontFamily = 'monospace';
                     tdId.style.color = 'var(--text-muted)';
+
+                    const tdTime = document.createElement('td');
+                    tdTime.textContent = pkt.timestamp || 'N/A';
+                    tdTime.style.color = 'var(--text-muted)';
+                    tdTime.style.fontSize = '0.9rem';
                     
                     const tdType = document.createElement('td');
                     const span = document.createElement('span');
@@ -301,6 +356,7 @@
                     
                     const tdDesc = document.createElement('td');
                     tdDesc.textContent = pkt.description;
+                    tdDesc.className = 'desc-cell';
                     
                     const tdActions = document.createElement('td');
                     const deleteBtn = document.createElement('button');
@@ -312,14 +368,21 @@
                     tdActions.appendChild(deleteBtn);
                     
                     tr.appendChild(tdId);
+                    tr.appendChild(tdTime);
                     tr.appendChild(tdType);
                     tr.appendChild(tdDesc);
                     tr.appendChild(tdActions);
                     
                     tbody.appendChild(tr);
                 });
+
+                document.getElementById('stat-total').textContent = total;
+                document.getElementById('stat-tcp').textContent = tcp;
+                document.getElementById('stat-udp').textContent = udp;
+                document.getElementById('stat-icmp').textContent = icmp;
+                filterTableLocally(); // Re-apply local filter if it exists
             } catch (error) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--danger);">Failed to load packets. Ensure Database is running.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--danger);">Failed to load packets. Ensure Database is running.</td></tr>';
             }
         }
 
@@ -340,6 +403,59 @@
             } catch (error) {
                 alert('Network error occurred while deleting.');
             }
+        }
+
+        function filterTableLocally() {
+            const input = document.getElementById('searchInput');
+            if (!input) return;
+            const filter = input.value.toLowerCase();
+            const rows = document.getElementById('packetTableBody').getElementsByTagName('tr');
+            
+            for (let i = 0; i < rows.length; i++) {
+                const descCell = rows[i].querySelector('.desc-cell');
+                if (descCell) {
+                    const textValue = descCell.textContent || descCell.innerText;
+                    if (textValue.toLowerCase().indexOf(filter) > -1) {
+                        rows[i].style.display = "";
+                    } else {
+                        rows[i].style.display = "none";
+                    }
+                }
+            }
+        }
+
+        async function clearAllPackets() {
+            if (!confirm('Are you sure you want to clear ALL packets? This cannot be undone.')) return;
+            try {
+                const response = await fetch('/api/packets?action=clear_all', { method: 'DELETE' });
+                if (response.ok) {
+                    fetchPackets();
+                } else {
+                    alert('Failed to clear packets.');
+                }
+            } catch (error) {
+                alert('Network error occurred.');
+            }
+        }
+
+        function exportCSV() {
+            if (!window.currentPackets || window.currentPackets.length === 0) {
+                alert('No data to export.');
+                return;
+            }
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Packet ID,Timestamp,Type,Description\n";
+            window.currentPackets.forEach(function(pkt) {
+                let row = `${pkt.packetId},${pkt.timestamp || ''},${pkt.packetType},"${pkt.description.replace(/"/g, '""')}"`;
+                csvContent += row + "\r\n";
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "network_packets.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
     </script>
 </body>
