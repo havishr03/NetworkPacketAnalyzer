@@ -16,6 +16,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -82,6 +84,7 @@ public class PacketServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String filterType = request.getParameter("type");
+        String sortBy = request.getParameter("sortBy");
 
         /* 
          * Task requirement: Store packets in a suitable data structure.
@@ -124,6 +127,30 @@ public class PacketServlet extends HttpServlet {
                                      .append(packet.getDescription()).append("\n");
                     }
                 }
+            }
+            
+            // =========================================================================
+            // DEMO REQUIREMENT: Collections & Comparator
+            // We use Collections.sort() along with a custom Comparator to sort the 
+            // ArrayList collection in Java memory before sending it to the client.
+            // =========================================================================
+            if (sortBy != null && !sortBy.isEmpty()) {
+                Collections.sort(packets, new Comparator<NetworkPacket>() {
+                    @Override
+                    public int compare(NetworkPacket p1, NetworkPacket p2) {
+                        if ("type".equalsIgnoreCase(sortBy)) {
+                            return p1.getPacketType().compareToIgnoreCase(p2.getPacketType());
+                        } else if ("timestamp".equalsIgnoreCase(sortBy)) {
+                            String t1 = p1.getTimestamp() == null ? "" : p1.getTimestamp();
+                            String t2 = p2.getTimestamp() == null ? "" : p2.getTimestamp();
+                            // Sort descending (newest first) for timestamp
+                            return t2.compareToIgnoreCase(t1); 
+                        } else if ("id".equalsIgnoreCase(sortBy)) {
+                            return p1.getPacketId().compareToIgnoreCase(p2.getPacketId());
+                        }
+                        return 0; // Default no sort
+                    }
+                });
             }
             
             // Print formatted buffer to server console
