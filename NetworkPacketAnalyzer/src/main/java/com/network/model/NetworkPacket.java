@@ -7,11 +7,19 @@ public class NetworkPacket {
     private String packetId;
     private String packetType;
     private String description;
+    private String timestamp;
 
     public NetworkPacket(String packetId, String packetType, String description) {
         this.packetId = packetId;
         this.packetType = packetType;
         this.description = description;
+    }
+
+    public NetworkPacket(String packetId, String packetType, String description, String timestamp) {
+        this.packetId = packetId;
+        this.packetType = packetType;
+        this.description = description;
+        this.timestamp = timestamp;
     }
 
     public String getPacketId() {
@@ -36,5 +44,13 @@ public class NetworkPacket {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(String timestamp) {
+        this.timestamp = timestamp;
     }
 }
