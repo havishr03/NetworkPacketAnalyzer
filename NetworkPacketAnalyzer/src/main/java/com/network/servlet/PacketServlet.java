@@ -99,7 +99,7 @@ public class PacketServlet extends HttpServlet {
         }
 
         try (Connection conn = DatabaseUtil.getConnection()) {
-            String sql = "SELECT packet_id, packet_type, description FROM packets";
+            String sql = "SELECT packet_id, packet_type, description, TO_CHAR(created_at, 'YYYY-MM-DD HH24:MI:SS') as created_at FROM packets";
             if (filterType != null && !filterType.isEmpty()) {
                 sql += " WHERE packet_type = ?";
             }
@@ -114,7 +114,8 @@ public class PacketServlet extends HttpServlet {
                         NetworkPacket packet = new NetworkPacket(
                             rs.getString("packet_id"),
                             rs.getString("packet_type"),
-                            rs.getString("description")
+                            rs.getString("description"),
+                            rs.getString("created_at")
                         );
                         packets.add(packet);
                         // Using StringBuffer to format log
@@ -145,6 +146,12 @@ public class PacketServlet extends HttpServlet {
      */
     @Override
     protected void doDelete(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String action = request.getParameter("action");
+        if ("clear_all".equals(action)) {
+            clearAllPackets(response);
+            return;
+        }
+
         String packetId = request.getParameter("id");
         if (packetId == null || packetId.trim().isEmpty()) {
             sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Packet ID parameter is missing or empty.");
@@ -179,6 +186,20 @@ public class PacketServlet extends HttpServlet {
                 stmt.setString(3, packet.getDescription());
                 stmt.executeUpdate();
             }
+        }
+    }
+
+    private void clearAllPackets(HttpServletResponse response) throws IOException {
+        try (Connection conn = DatabaseUtil.getConnection()) {
+            String sql = "DELETE FROM packets";
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.executeUpdate();
+                response.setStatus(HttpServletResponse.SC_OK);
+                response.setContentType("application/json");
+                response.getWriter().write("{\"status\":\"success\", \"message\":\"All packets cleared successfully.\"}");
+            }
+        } catch (SQLException e) {
+            sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error while clearing packets: " + e.getMessage());
         }
     }
 
