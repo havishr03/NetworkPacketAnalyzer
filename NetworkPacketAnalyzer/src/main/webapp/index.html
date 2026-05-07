@@ -167,6 +167,19 @@
             color: #60a5fa;
         }
 
+        th.sortable {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        th.sortable:hover {
+            color: var(--text-main);
+        }
+        th.sortable span {
+            font-size: 0.8rem;
+            opacity: 0.5;
+            margin-left: 0.2rem;
+        }
+
         .stats-container {
             display: flex;
             gap: 1rem;
@@ -246,9 +259,9 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Packet ID</th>
-                        <th>Timestamp</th>
-                        <th>Type</th>
+                        <th onclick="setSort('id')" class="sortable" title="Click to sort">Packet ID <span>↕</span></th>
+                        <th onclick="setSort('timestamp')" class="sortable" title="Click to sort">Timestamp <span>↕</span></th>
+                        <th onclick="setSort('type')" class="sortable" title="Click to sort">Type <span>↕</span></th>
                         <th>Description</th>
                         <th>Actions</th>
                     </tr>
@@ -264,6 +277,13 @@
     </div>
 
     <script>
+        let currentSort = '';
+
+        function setSort(column) {
+            currentSort = column;
+            fetchPackets();
+        }
+
         // Initial fetch on load
         document.addEventListener('DOMContentLoaded', () => {
             fetchPackets();
@@ -316,7 +336,10 @@
             const tbody = document.getElementById('packetTableBody');
             
             try {
-                const url = filter ? `/api/packets?type=${filter}` : '/api/packets';
+                let url = '/api/packets?';
+                if (filter) url += `type=${filter}&`;
+                if (currentSort) url += `sortBy=${currentSort}&`;
+
                 const response = await fetch(url);
                 const packets = await response.json();
 
